@@ -27,7 +27,7 @@ pipeline {
                     
                     // Access fields directly
                     appVersion = packageJson.version
-                    echo "Building ${appName} version ${appVersion}"
+                    echo "Building version ${appVersion}"
                 }
             }
         }
