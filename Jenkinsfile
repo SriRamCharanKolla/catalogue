@@ -26,15 +26,15 @@ pipeline {
                 }
             }
         }
-        stage('Install Dependencies') {
-            steps {
-                script{
-                    sh """
-                        npm install
-                    """
-                }
-            }
-        }
+        // stage('Install Dependencies') {
+        //     steps {
+        //         script{
+        //             sh """
+        //                 npm install
+        //             """
+        //         }
+        //     }
+        // }
         // stage('SonarQube Analysis') {
         //     steps {
         //         script {
@@ -121,7 +121,7 @@ pipeline {
                             --format table \
                             --output trivy-os-report.txt \
                             --exit-code 0 \
-                            catalogue:${ACC_ID}.dkr.ecr.${region}.amazonaws.com/roboshop/catalogue:${appVersion}
+                            ${ACC_ID}.dkr.ecr.${region}.amazonaws.com/roboshop/catalogue:${appVersion}
                     """
 
                     // Generate HTML report
@@ -134,7 +134,7 @@ pipeline {
                             --template "@/usr/local/share/trivy/templates/html.tpl" \
                             --output trivy-os-report.html \
                             --exit-code 0 \
-                            catalogue:${ACC_ID}.dkr.ecr.${region}.amazonaws.com/roboshop/catalogue:${appVersion}
+                            ${ACC_ID}.dkr.ecr.${region}.amazonaws.com/roboshop/catalogue:${appVersion}
                     """
 
                     // Print table to console
@@ -160,7 +160,7 @@ pipeline {
                                 --format table \
                                 --exit-code 1 \
                                 --quiet \
-                                catalogue:${ACC_ID}.dkr.ecr.${region}.amazonaws.com/roboshop/catalogue:${appVersion}
+                                ${ACC_ID}.dkr.ecr.${region}.amazonaws.com/roboshop/catalogue:${appVersion}
                         """,
                         returnStatus: true
                     )
