@@ -109,34 +109,66 @@ pipeline {
                 }
             }
         }
-        stage('Trivy Dockerfile Scan') {
+        stage('Trivy OS Scan') {
             steps {
                 script {
+                    // Generate table report
                     sh """
-                        trivy config \
+                        trivy image \
+                            --scanners vuln \
+                            --pkg-types os \
                             --severity HIGH,MEDIUM \
                             --format table \
-                            --output trivy-dockerfile-report.txt \
-                            Dockerfile
+                            --output trivy-os-report.txt \
+                            --exit-code 0 \
+                            catalogue:latest
                     """
 
-                    sh 'cat trivy-dockerfile-report.txt'
+                    // Generate HTML report
+                    sh """
+                        trivy image \
+                            --scanners vuln \
+                            --pkg-types os \
+                            --severity HIGH,MEDIUM \
+                            --format template \
+                            --template "@/usr/local/share/trivy/templates/html.tpl" \
+                            --output trivy-os-report.html \
+                            --exit-code 0 \
+                            catalogue:latest
+                    """
 
+                    // Print table to console
+                    sh 'cat trivy-os-report.txt'
+
+                    // Publish HTML report
+                    publishHTML(target: [
+                        allowMissing          : false,
+                        alwaysLinkToLastBuild : true,
+                        keepAll               : true,
+                        reportDir             : '.',
+                        reportFiles           : 'trivy-os-report.html',
+                        reportName            : 'Trivy OS Vulnerability Report'
+                    ])
+
+                    // Check for vulnerabilities and fail if found
                     def scanResult = sh(
                         script: """
-                            trivy config \
+                            trivy image \
+                                --scanners vuln \
+                                --pkg-types os \
                                 --severity HIGH,MEDIUM \
-                                --exit-code 1 \
                                 --format table \
-                                Dockerfile
+                                --exit-code 1 \
+                                --quiet \
+                                catalogue:latest
                         """,
                         returnStatus: true
                     )
 
                     if (scanResult != 0) {
-                        error "🚨 Trivy found HIGH/MEDIUM misconfigurations in Dockerfile. Pipeline failed."
+                        error "🚨 Trivy found HIGH/MEDIUM OS vulnerabilities. Pipeline failed. Check the Trivy OS Vulnerability Report."
                     } else {
-                        echo "✅ No HIGH or MEDIUM Dockerfile misconfigurations found. Pipeline continues."
+                        echo "✅ No HIGH or MEDIUM OS vulnerabilities found. Pipeline continues."
                     }
                 }
             }
