@@ -121,7 +121,7 @@ pipeline {
                             --format table \
                             --output trivy-os-report.txt \
                             --exit-code 0 \
-                            catalogue:latest
+                            catalogue:${ACC_ID}.dkr.ecr.${region}.amazonaws.com/roboshop/catalogue:${appVersion}
                     """
 
                     // Generate HTML report
@@ -134,7 +134,7 @@ pipeline {
                             --template "@/usr/local/share/trivy/templates/html.tpl" \
                             --output trivy-os-report.html \
                             --exit-code 0 \
-                            catalogue:latest
+                            catalogue:${ACC_ID}.dkr.ecr.${region}.amazonaws.com/roboshop/catalogue:${appVersion}
                     """
 
                     // Print table to console
@@ -160,7 +160,7 @@ pipeline {
                                 --format table \
                                 --exit-code 1 \
                                 --quiet \
-                                catalogue:latest
+                                catalogue:${ACC_ID}.dkr.ecr.${region}.amazonaws.com/roboshop/catalogue:${appVersion}
                         """,
                         returnStatus: true
                     )
