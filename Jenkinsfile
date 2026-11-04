@@ -103,7 +103,6 @@ pipeline {
                     withAWS(credentials: 'aws-creds', region: "${region}") {
                         sh """
                             docker build -t ${ACC_ID}.dkr.ecr.${region}.amazonaws.com/roboshop/catalogue:${appVersion} .
-                            docker push ${ACC_ID}.dkr.ecr.${region}.amazonaws.com/roboshop/catalogue:${appVersion}
                         """
                     }
                 }
@@ -152,8 +151,7 @@ pipeline {
         //         }
         //     }
         // }
-        stage('Trivy Dockerfile Scan') 
-        {
+        stage('Trivy Docker Scan') {
             steps {
                 script {
                     sh """
@@ -181,6 +179,19 @@ pipeline {
                         error "🚨 Trivy found HIGH/MEDIUM misconfigurations in Dockerfile. Pipeline failed."
                     } else {
                         echo "✅ No HIGH or MEDIUM Dockerfile misconfigurations found. Pipeline continues."
+                    }
+                }
+            }
+        }
+        stage ('Push image to ECR'){
+            steps {
+               script{
+                    withAWS(credentials: 'aws-creds', region: "${region}") {
+                        // Commands here have AWS authentication
+                        sh """
+                            aws ecr get-login-password --region ${region} | docker login --username AWS --password-stdin ${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com
+                            docker push ${ACC_ID}.dkr.ecr.${region}.amazonaws.com/roboshop/catalogue:${appVersion}
+                        """
                     }
                 }
             }
