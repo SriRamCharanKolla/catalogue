@@ -109,66 +109,45 @@ pipeline {
                 }
             }
         }
-        stage('Trivy OS Scan') {
+        stage('Trivy Security Scan') {
             steps {
                 script {
-                    // Generate table report
+                    def imageUri = "${ACC_ID}.dkr.ecr.${region}.amazonaws.com/roboshop/catalogue:${appVersion}"
+
+                    // 1. Generate table report on Agent disk
                     sh """
                         trivy image \
                             --scanners vuln \
-                            --pkg-types os \
+                            --pkg-types os,library \
                             --severity HIGH,MEDIUM \
                             --format table \
-                            --output trivy-os-report.txt \
+                            --output trivy-report.txt \
                             --exit-code 0 \
-                            ${ACC_ID}.dkr.ecr.${region}.amazonaws.com/roboshop/catalogue:${appVersion}
+                            ${imageUri}
                     """
 
-                    // Generate HTML report
-                    sh """
-                        trivy image \
-                            --scanners vuln \
-                            --pkg-types os \
-                            --severity HIGH,MEDIUM \
-                            --format template \
-                            --template "@/usr/local/share/trivy/templates/html.tpl" \
-                            --output trivy-os-report.html \
-                            --exit-code 0 \
-                            ${ACC_ID}.dkr.ecr.${region}.amazonaws.com/roboshop/catalogue:${appVersion}
-                    """
+                    // 2. Print table directly in Jenkins Console Output
+                    sh 'cat trivy-report.txt'
 
-                    // Print table to console
-                    sh 'cat trivy-os-report.txt'
-
-                    // Publish HTML report
-                    publishHTML(target: [
-                        allowMissing          : false,
-                        alwaysLinkToLastBuild : true,
-                        keepAll               : true,
-                        reportDir             : '.',
-                        reportFiles           : 'trivy-os-report.html',
-                        reportName            : 'Trivy OS Vulnerability Report'
-                    ])
-
-                    // Check for vulnerabilities and fail if found
+                    // 3. Fail pipeline if vulnerabilities found (Exit code 1)
                     def scanResult = sh(
                         script: """
                             trivy image \
                                 --scanners vuln \
-                                --pkg-types os \
+                                --pkg-types os,library \
                                 --severity HIGH,MEDIUM \
                                 --format table \
                                 --exit-code 1 \
                                 --quiet \
-                                ${ACC_ID}.dkr.ecr.${region}.amazonaws.com/roboshop/catalogue:${appVersion}
+                                ${imageUri}
                         """,
                         returnStatus: true
                     )
 
                     if (scanResult != 0) {
-                        error "🚨 Trivy found HIGH/MEDIUM OS vulnerabilities. Pipeline failed. Check the Trivy OS Vulnerability Report."
+                        error "🚨 Trivy found HIGH/MEDIUM vulnerabilities. Pipeline failed."
                     } else {
-                        echo "✅ No HIGH or MEDIUM OS vulnerabilities found. Pipeline continues."
+                        echo "✅ No HIGH or MEDIUM vulnerabilities found. Pipeline continues."
                     }
                 }
             }
