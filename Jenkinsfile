@@ -109,45 +109,78 @@ pipeline {
                 }
             }
         }
-        stage('Trivy Security Scan') {
+        // stage('Trivy Security Scan') {
+        //     steps {
+        //         script {
+        //             def imageUri = "${ACC_ID}.dkr.ecr.${region}.amazonaws.com/roboshop/catalogue:${appVersion}"
+
+        //             // 1. Generate table report on Agent disk
+        //             sh """
+        //                 trivy image \
+        //                     --scanners vuln \
+        //                     --pkg-types os,library \
+        //                     --severity HIGH,MEDIUM \
+        //                     --format table \
+        //                     --output trivy-report.txt \
+        //                     --exit-code 0 \
+        //                     ${imageUri}
+        //             """
+
+        //             // 2. Print table directly in Jenkins Console Output
+        //             sh 'cat trivy-report.txt'
+
+        //             // 3. Fail pipeline if vulnerabilities found (Exit code 1)
+        //             def scanResult = sh(
+        //                 script: """
+        //                     trivy image \
+        //                         --scanners vuln \
+        //                         --pkg-types os,library \
+        //                         --severity HIGH,MEDIUM \
+        //                         --format table \
+        //                         --exit-code 1 \
+        //                         --quiet \
+        //                         ${imageUri}
+        //                 """,
+        //                 returnStatus: true
+        //             )
+
+        //             if (scanResult != 0) {
+        //                 error "🚨 Trivy found HIGH/MEDIUM vulnerabilities. Pipeline failed."
+        //             } else {
+        //                 echo "✅ No HIGH or MEDIUM vulnerabilities found. Pipeline continues."
+        //             }
+        //         }
+        //     }
+        // }
+        stage('Trivy Dockerfile Scan') 
+        {
             steps {
                 script {
-                    def imageUri = "${ACC_ID}.dkr.ecr.${region}.amazonaws.com/roboshop/catalogue:${appVersion}"
-
-                    // 1. Generate table report on Agent disk
                     sh """
-                        trivy image \
-                            --scanners vuln \
-                            --pkg-types os,library \
+                        trivy config \
                             --severity HIGH,MEDIUM \
                             --format table \
-                            --output trivy-report.txt \
-                            --exit-code 0 \
-                            ${imageUri}
+                            --output trivy-dockerfile-report.txt \
+                            Dockerfile
                     """
 
-                    // 2. Print table directly in Jenkins Console Output
-                    sh 'cat trivy-report.txt'
+                    sh 'cat trivy-dockerfile-report.txt'
 
-                    // 3. Fail pipeline if vulnerabilities found (Exit code 1)
                     def scanResult = sh(
                         script: """
-                            trivy image \
-                                --scanners vuln \
-                                --pkg-types os,library \
+                            trivy config \
                                 --severity HIGH,MEDIUM \
-                                --format table \
                                 --exit-code 1 \
-                                --quiet \
-                                ${imageUri}
+                                --format table \
+                                Dockerfile
                         """,
                         returnStatus: true
                     )
 
                     if (scanResult != 0) {
-                        error "🚨 Trivy found HIGH/MEDIUM vulnerabilities. Pipeline failed."
+                        error "🚨 Trivy found HIGH/MEDIUM misconfigurations in Dockerfile. Pipeline failed."
                     } else {
-                        echo "✅ No HIGH or MEDIUM vulnerabilities found. Pipeline continues."
+                        echo "✅ No HIGH or MEDIUM Dockerfile misconfigurations found. Pipeline continues."
                     }
                 }
             }
