@@ -13,13 +13,6 @@ pipeline {
         //disableConcurrentBuilds()
         timeout(time: 5, unit: 'MINUTES')
     }
-    /* parameters {
-        string(name: 'PERSON', defaultValue: 'Mr Jenkins', description: 'Who should I say hello to?')
-        text(name: 'BIOGRAPHY', defaultValue: '', description: 'Enter some information about the person')
-        booleanParam(name: 'DEPLOY', defaultValue: false, description: 'Toggle this value')
-        choice(name: 'CHOICE', choices: ['One', 'Two', 'Three'], description: 'Pick something')
-        password(name: 'PASSWORD', defaultValue: 'SECRET', description: 'Enter a password')
-    } */
     stages {
         stage('Read version'){
             steps {
@@ -42,21 +35,66 @@ pipeline {
                 }
             }
         }
-        stage('SonarQube Analysis') {
+        // stage('SonarQube Analysis') {
+        //     steps {
+        //         script {
+        //             def scannerHome = tool name: 'sonar-8' // agent configuration
+        //             withSonarQubeEnv('sonar-server') { // analysing and uploading to server
+        //                 sh "${scannerHome}/bin/sonar-scanner"
+        //             }
+        //         }
+        //     }
+        // }
+        // stage("Quality Gate") {
+        //     steps {
+        //       timeout(time: 1, unit: 'HOURS') {
+        //         waitForQualityGate abortPipeline: true
+        //       }
+        //     }
+        // }
+        stage('Dependabot Alerts Check') {
             steps {
-                script {
-                    def scannerHome = tool name: 'sonar-8' // agent configuration
-                    withSonarQubeEnv('sonar-server') { // analysing and uploading to server
-                        sh "${scannerHome}/bin/sonar-scanner"
+                withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
+                    script {
+                        def owner = 'SriRamCharanKolla'
+                        def repo  = 'catalogue'
+
+                        def response = sh(
+                            script: """
+                                curl -s -w "\\n%{http_code}" \\
+                                    -H "Authorization: Bearer ${GITHUB_TOKEN}" \\
+                                    -H "Accept: application/vnd.github+json" \\
+                                    -H "X-GitHub-Api-Version: 2022-11-28" \\
+                                    "https://api.github.com/repos/${owner}/${repo}/dependabot/alerts?severity=high,critical&state=open&per_page=100"
+                            """,
+                            returnStdout: true
+                        ).trim()
+
+                        def parts      = response.tokenize('\n')
+                        def httpStatus = parts[-1].trim()
+                        def body       = parts[0..-2].join('\n')
+
+                        if (httpStatus != '200') {
+                            error "GitHub API call failed with HTTP ${httpStatus}. Check token permissions (security_events scope required).\nResponse: ${body}"
+                        }
+
+                        def alerts = readJSON text: body
+
+                        if (alerts.size() == 0) {
+                            echo "✅ No HIGH or CRITICAL Dependabot alerts found. Pipeline continues."
+                        } else {
+                            echo "🚨 Found ${alerts.size()} HIGH/CRITICAL Dependabot alert(s):"
+                            alerts.each { alert ->
+                                def pkg      = alert.security_vulnerability?.package?.name ?: 'unknown'
+                                def severity = alert.security_advisory?.severity?.toUpperCase() ?: 'UNKNOWN'
+                                def summary  = alert.security_advisory?.summary ?: 'No summary'
+                                def fixedIn  = alert.security_vulnerability?.first_patched_version?.identifier ?: 'No fix available'
+                                echo "  ❌ [${severity}] ${pkg} — ${summary} (Fixed in: ${fixedIn})"
+                            }
+                            error "Pipeline failed: ${alerts.size()} HIGH/CRITICAL Dependabot alert(s) detected."
+                        }
                     }
                 }
-            }
-        }
-        stage("Quality Gate") {
-            steps {
-              timeout(time: 1, unit: 'HOURS') {
-                waitForQualityGate abortPipeline: true
-              }
             }
         }
         stage('Build Image') {
@@ -82,6 +120,7 @@ pipeline {
     post { 
         always { 
             echo 'I will always say Hello again!'
+            cleanWs()
         }
         success {
             echo "pipeline success"
