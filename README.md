@@ -210,10 +210,17 @@ Jenkins build console output demonstrating successful pipeline completion, `[WS-
 
 ---
 
+### 11. Jenkins Multibranch Pipeline & Automated Branch Discovery
+Automated Jenkins Multibranch Pipeline for `ROBOSHOP/catalogue` discovering branches dynamically from Git (`main`, `feature-1`), evaluating branch conditions (`env.BRANCH_NAME`), and executing custom CI/CD workflows via reusable Jenkins Shared Libraries.
+![Multibranch Pipeline Execution](images/11-jenkins-multibranch-pipeline-branches.png)
+
+---
+
 ## 🛠️ Tech Stack & Prerequisites
 
 - **Source Code**: Node.js 20, Express, MongoDB client
-- **CI/CD Orchestration**: Jenkins (Declarative Pipeline)
+- **CI/CD Orchestration**: Jenkins (Declarative & Multibranch Pipeline)
+- **Reusable Pipelines**: Jenkins Shared Libraries (`@Library('jenkins-test-library')`)
 - **Containerization**: Docker (Multi-stage build, Alpine Linux 3.23)
 - **Cloud Infrastructure**: AWS ECR, AWS EC2 Build Agent (RHEL 9 / t3.micro)
 - **Security & Vulnerability Tools**: 
